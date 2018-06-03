@@ -60,7 +60,7 @@ public class MusicCmd implements Command {
 
     private AudioPlayer getPlayer(Guild guild) {
 
-        if(hasPlayer(guild))
+        if (hasPlayer(guild))
             return PLAYERS.get(guild).getKey();
         else
             return createPlayer(guild);
@@ -89,7 +89,7 @@ public class MusicCmd implements Command {
 
             @Override
             public void playlistLoaded(AudioPlaylist playlist) {
-                for(int i = 0; i < (playlist.getTracks().size() > PLAYLIST_LIMIT ? PLAYLIST_LIMIT : playlist.getTracks().size()); i++) {
+                for (int i = 0; i < (playlist.getTracks().size() > PLAYLIST_LIMIT ? PLAYLIST_LIMIT : playlist.getTracks().size()); i++) {
                     getManager(guild).queue(playlist.getTracks().get(i), author);
                 }
             }
@@ -145,7 +145,7 @@ public class MusicCmd implements Command {
     public void action(String[] args, MessageReceivedEvent event) {
 
         guild = event.getGuild();
-        if(args.length < 1) {
+        if (args.length < 1) {
             sendErrorMsg(event, help());
         }
 
@@ -154,26 +154,41 @@ public class MusicCmd implements Command {
             case "play":
             case "p":
 
-                if(args.length < 2) {
+                if (args.length < 2) {
                     sendErrorMsg(event, "Bitte gib eine verfügbare Quelle an.");
                 }
 
-                String input = Arrays.stream(args).skip(1).map(s -> " " + s).collect(Collectors.joining()).substring(1);
 
-                if(!(input.startsWith("http://") || input.startsWith("https://")))
-                    input = "ytsearch: " + input;
+                if (!isIdle(guild)) {
+
+                    getManager(guild).clearQueue();
+                    skip(guild);
+
+                    String input = Arrays.stream(args).skip(1).map(s -> " " + s).collect(Collectors.joining()).substring(1);
+
+                    if (!(input.startsWith("http://") || input.startsWith("https://")))
+                        input = "ytsearch: " + input;
 
 
                     loadTrack(input, event.getMember(), event.getMessage());
 
+                } else {
+                    String input = Arrays.stream(args).skip(1).map(s -> " " + s).collect(Collectors.joining()).substring(1);
+
+                    if (!(input.startsWith("http://") || input.startsWith("https://")))
+                        input = "ytsearch: " + input;
+
+
+                    loadTrack(input, event.getMember(), event.getMessage());
+                }
 
                 break;
 
             case "skip":
 
-                if(isIdle(guild)) return;
+                if (isIdle(guild)) return;
 
-                for(int i = (args.length > 1 ? Integer.parseInt(args[1]) : 1); i == 1; i--) {
+                for (int i = (args.length > 1 ? Integer.parseInt(args[1]) : 1); i == 1; i--) {
                     skip(guild);
                 }
 
@@ -181,7 +196,7 @@ public class MusicCmd implements Command {
 
             case "stop":
 
-                if(isIdle(guild)) return;
+                if (isIdle(guild)) return;
 
                 getManager(guild).clearQueue();
                 skip(guild);
@@ -193,7 +208,7 @@ public class MusicCmd implements Command {
 
             case "shuffle":
 
-                if(isIdle(guild)) return;
+                if (isIdle(guild)) return;
 
                 getManager(guild).randomiseQueue();
 
@@ -201,15 +216,49 @@ public class MusicCmd implements Command {
 
                 break;
 
+            case "volume":
+            case "v":
+
+                if(isIdle(guild)) sendErrorMsg(event, "Momentan wird kein Track abgespielt.");
+
+                if(args.length < 2) {
+                    sendErrorMsg(event, "Bitte gib einen Wert zwischen 0 und 100 an.");
+                }else {
+
+                    try {
+                        String volume = args[1];
+                        getPlayer(guild).setVolume(Integer.parseInt(volume));
+
+                        event.getTextChannel().sendMessage(
+                                new EmbedBuilder().setColor(Color.CYAN).setDescription("Volume: " + Integer.parseInt(volume)).build()
+                        ).queue();
+
+                    }catch (Exception e) {
+                        sendErrorMsg(event, "Bitte gib einen Wert zwischen 0 und 100 an.");
+                    }
+
+                }
+
+                break;
+
             case "now":
             case "info":
 
-                if(isIdle(guild)) sendErrorMsg(event, "Momentan wird kein Track abgespielt.");
+                if (isIdle(guild)) sendErrorMsg(event, "Momentan wird kein Track abgespielt.");
 
                 AudioTrack track = getPlayer(guild).getPlayingTrack();
                 AudioTrackInfo audioTrackInfo = track.getInfo();
 
-                sendErrorMsg(event, "Current Track: " + audioTrackInfo.title);
+                event.getTextChannel().sendMessage(
+                        new EmbedBuilder()
+                                .setDescription("--CURRENT TRACK INFO--")
+                                .addField("Title: ", audioTrackInfo.title, false)
+                                .addField("Duration: ", "[" + getTimestamp(track.getPosition()) + "/" +
+                                        getTimestamp(track.getDuration()) + "]", false)
+                                .addField("Author: ", audioTrackInfo.author, false)
+                                .addField("Volume: ", String.valueOf(getPlayer(guild).getVolume()), false)
+                                .build()
+                ).queue();
 
 
                 break;
