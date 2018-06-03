@@ -28,6 +28,8 @@
 
 *.iml
 
+.idea/
+
 # CMake
 cmake-build-debug/
 
